@@ -5,10 +5,13 @@
  */
 package com.springboot.controller;
 
+import com.springboot.service.FileService;
+
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.util.Streams;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,9 @@ import javax.servlet.http.HttpServletRequest;
 
 @RestController
 public class FileUploadController {
+    @Autowired
+    FileService fileService;
+
     @RequestMapping(value = "/upload2", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Object> uploadFileTest(@RequestParam("file") MultipartFile file) throws IOException {
         File convertFile = new File("C:\\Users\\ttran\\Downloads\\temp\\" + file.getOriginalFilename());
@@ -39,26 +45,20 @@ public class FileUploadController {
         return new ResponseEntity<>("File uploaded successfully", HttpStatus.OK);
     }
 
-    public void writeContent(InputStream stream) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println(line);
-        }
-    }
-
-    @RequestMapping(value = "/upload", method = RequestMethod.POST)
+    @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
         System.out.println("---------doPost-----------:" + request);
         ServletFileUpload upload = new ServletFileUpload();
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
+            System.out.println(iterStream.hasNext());
             while (iterStream.hasNext()) {
                 FileItemStream item = iterStream.next();
                 String name = item.getFieldName();
                 InputStream stream = item.openStream();
                 if (!item.isFormField()) {
-                    writeContent(stream);
+//                    fileService.writeContent(stream);
+                    fileService.upload(stream);
                 } else {
                     String formFieldValue = Streams.asString(stream);
                     System.out.println("formFieldValue: "+formFieldValue);
