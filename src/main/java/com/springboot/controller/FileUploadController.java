@@ -51,7 +51,6 @@ public class FileUploadController {
         ServletFileUpload upload = new ServletFileUpload();
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
-            System.out.println(iterStream.hasNext());
             while (iterStream.hasNext()) {
                 FileItemStream item = iterStream.next();
                 String name = item.getFieldName();
