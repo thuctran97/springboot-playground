@@ -5,6 +5,7 @@
  */
 package com.springboot.controller;
 
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.springboot.service.FileService;
 
 import org.apache.commons.fileupload.FileItemIterator;
@@ -47,17 +48,21 @@ public class FileUploadController {
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
-        System.out.println("---------doPost-----------:" + request);
+//        ObjectMetadata metadata = new ObjectMetadata();
+//        String fileName = fileService.getFileName(request);
+//        System.out.println("fileName: "+fileName);
         ServletFileUpload upload = new ServletFileUpload();
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
+            int count = 0;
+            System.out.println("hasNext: "+iterStream.hasNext());
             while (iterStream.hasNext()) {
+                System.out.println("iterStream: " + count++);
                 FileItemStream item = iterStream.next();
                 String name = item.getFieldName();
                 InputStream stream = item.openStream();
                 if (!item.isFormField()) {
-//                    fileService.writeContent(stream);
-                    fileService.upload(stream);
+                    fileService.upload(stream, "abc", new ObjectMetadata());
                 } else {
                     String formFieldValue = Streams.asString(stream);
                     System.out.println("formFieldValue: "+formFieldValue);

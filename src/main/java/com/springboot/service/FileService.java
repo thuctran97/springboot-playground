@@ -19,17 +19,35 @@ import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.MultipartResolver;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Iterator;
+
+import javax.servlet.http.HttpServletRequest;
 
 @Service
 public class FileService {
-    public static String existingBucketName = "s3://dv2corp1-ap-scheduler-svc";
-    public static String keyName            = "AKIATS566GDNZV6W5CYA";
+    public static String existingBucketName = "dv2corp1-ap-scheduler-svc";
+    public TransferManager tm;
+    public AmazonS3 s3Client;
+
+    public FileService(){
+        s3Client = AmazonS3ClientBuilder.standard()
+                .withRegion(Regions.DEFAULT_REGION)
+                .withCredentials(new ProfileCredentialsProvider())
+                .build();
+        tm = TransferManagerBuilder.standard()
+                .withS3Client(s3Client)
+                .build();
+    }
 
     public void writeContent(InputStream stream) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
@@ -39,24 +57,24 @@ public class FileService {
         }
     }
 
-    public void upload(InputStream inputStream){
-        System.out.println("++++++++upload+++++++");
-        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-                .withRegion(Regions.DEFAULT_REGION)
-                .withCredentials(new ProfileCredentialsProvider())
-                .build();
-        TransferManager tm = TransferManagerBuilder.standard()
-                .withS3Client(s3Client)
-                .build();
+    public String getFileName(HttpServletRequest request){
+        MultipartResolver resolver = new CommonsMultipartResolver(request.getSession().getServletContext());
+        MultipartHttpServletRequest multipartRequest = resolver.resolveMultipart(request);
+        CommonsMultipartFile multipartFile =  null;
+        Iterator<String> iterator = multipartRequest.getFileNames();
+        while (iterator.hasNext()) {
+            String key = (String) iterator.next();
+            multipartFile = (CommonsMultipartFile) multipartRequest.getFile(key);
+        }
+        return multipartFile.getOriginalFilename();
+    }
+
+    public void upload(InputStream inputStream, String fileName, ObjectMetadata metadata){
+        System.out.println("--------upload-----------");
         PutObjectRequest request = new PutObjectRequest(
-                existingBucketName, keyName, inputStream, new ObjectMetadata());
-        request.setGeneralProgressListener(new ProgressListener() {
-            @Override
-            public void progressChanged(ProgressEvent progressEvent) {
-                System.out.println("Transferred bytes: " +
-                        progressEvent.getBytesTransferred());
-            }
-        });
+                existingBucketName, fileName, inputStream, metadata);
+        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
+                progressEvent.getBytesTransferred()));
         Upload upload = tm.upload(request);
         System.out.println("Object upload started");
         try {
