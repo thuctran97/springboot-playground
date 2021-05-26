@@ -12,6 +12,7 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.ProgressListener;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.util.Streams;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -44,8 +46,8 @@ public class FileUploadController {
     FileService fileService;
 
     public final int MAX_MERMORY_sIZE = 1024 * 1024 * 3;
-    public final int MAX_FILE_sIZE = 1024 * 1024 * 500;
-    public final int MAX_REQUEST_SIZE = 1024 * 1024 * 1000;
+    public final int MAX_FILE_sIZE = 1024 * 1024 * 2000;
+    public final int MAX_REQUEST_SIZE = 1024 * 1024 * 2100;
 
     @RequestMapping(value = "/normal-upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Object> uploadFileTest(@RequestParam("file") MultipartFile file) throws IOException {
@@ -59,16 +61,13 @@ public class FileUploadController {
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
-//        String fileName = fileService.getFileName(request);
-//        System.out.println("fileName: "+fileName);
         ServletFileUpload upload = new ServletFileUpload();
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
-            int count = 0;
+            int fileCount = 0;
             while (iterStream.hasNext()) {
-                System.out.println("count: " + count++);
+                System.out.println("File number: " + fileCount++);
                 FileItemStream item = iterStream.next();
-                String name = item.getFieldName();
                 InputStream stream = item.openStream();
                 if (!item.isFormField()) {
                     fileService.upload(stream, "temp", new ObjectMetadata());
@@ -84,10 +83,9 @@ public class FileUploadController {
         return "success";
     }
 
-    @RequestMapping(value = "/upload2", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String handleUpload2(HttpServletRequest request) throws FileUploadException, IOException {
-        boolean isMultipart = ServletFileUpload.isMultipartContent(request);
-        System.out.println("isMultipart: "+ isMultipart);
+    @RequestMapping(value = "/upload-temp", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String handleUploadTemp(HttpServletRequest request) throws FileUploadException, IOException {
+        System.out.println("isMultipart: "+ ServletFileUpload.isMultipartContent(request));
         DiskFileItemFactory factory = new DiskFileItemFactory();
         factory.setRepository(
                 new File(System.getProperty("java.io.tmpdir")));
@@ -96,18 +94,25 @@ public class FileUploadController {
         ServletFileUpload upload = new ServletFileUpload(factory);
         upload.setFileSizeMax(MAX_FILE_sIZE);
         upload.setSizeMax(MAX_REQUEST_SIZE);
+        ProgressListener progressListener = (pBytesRead, pContentLength, pItems) -> {
+            System.out.println("We are currently reading item " + pItems);
+            if (pContentLength == -1) {
+                System.out.println("So far, " + pBytesRead + " bytes have been read.");
+            } else {
+                System.out.println("So far, " + pBytesRead + " of " + pContentLength
+                        + " bytes have been read.");
+            }
+        };
+        upload.setProgressListener(progressListener);
         List items = upload.parseRequest(request);
-        System.out.println("list items: "+ items.size());
         Iterator iter = items.iterator();
-        int count = 0;
         while (iter.hasNext()) {
             FileItem item = (FileItem) iter.next();
-            System.out.println("count: " + count++);
             if (!item.isFormField()) {
                 try (
-                        InputStream uploadedStream = item.getInputStream();
-                        OutputStream out = new FileOutputStream("file.mov");) {
-
+                    InputStream uploadedStream = item.getInputStream();
+                    OutputStream out = new FileOutputStream("file.mov");
+                    ){
                     IOUtils.copy(uploadedStream, out);
                 }
             }

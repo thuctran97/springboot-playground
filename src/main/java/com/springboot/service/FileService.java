@@ -6,6 +6,7 @@
 package com.springboot.service;
 
 import com.amazonaws.AmazonClientException;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.event.ProgressEvent;
 import com.amazonaws.event.ProgressListener;
@@ -18,6 +19,7 @@ import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 
+import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.multipart.MultipartResolver;
@@ -26,9 +28,12 @@ import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
@@ -38,7 +43,8 @@ public class FileService {
     public static String existingBucketName = "dv2corp1-ap-scheduler-svc";
     public TransferManager tm;
     public AmazonS3 s3Client;
-
+    public DefaultAWSCredentialsProviderChain credentialProviderChain;
+    public TransferManager tx;
     public FileService(){
         s3Client = AmazonS3ClientBuilder.standard()
                 .withRegion(Regions.DEFAULT_REGION)
@@ -47,6 +53,8 @@ public class FileService {
         tm = TransferManagerBuilder.standard()
                 .withS3Client(s3Client)
                 .build();
+        credentialProviderChain = new DefaultAWSCredentialsProviderChain();
+        tx = new TransferManager(credentialProviderChain.getCredentials());
     }
 
     public void writeContent(InputStream stream) throws IOException {
@@ -69,13 +77,25 @@ public class FileService {
         return multipartFile.getOriginalFilename();
     }
 
-    public void upload(InputStream inputStream, String fileName, ObjectMetadata metadata){
-        System.out.println("--------upload-----------");
-        PutObjectRequest request = new PutObjectRequest(
-                existingBucketName, fileName, inputStream, metadata);
-        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
-                progressEvent.getBytesTransferred()));
-        Upload upload = tm.upload(request);
+    public void upload(InputStream inputStream, String fileName, ObjectMetadata metadata) throws IOException {
+        try (
+                OutputStream out = new FileOutputStream(fileName);
+            ){
+            IOUtils.copy(inputStream, out);
+        }
+//        metadata.setContentLength(inputStream.available());
+//        PutObjectRequest request = new PutObjectRequest(
+//                existingBucketName, fileName, inputStream, metadata);
+//        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
+//                progressEvent.getBytesTransferred()));
+//        Upload upload = tm.upload(request);
+        Upload upload = tx.upload(existingBucketName, fileName, new File(fileName));
+        if (upload.isDone() == false) {
+            System.out.println("Transfer: " + upload.getDescription());
+            System.out.println("  - State: " + upload.getState());
+            System.out.println("  - Progress: "
+                    + upload.getProgress().getBytesTransferred());
+        }
         System.out.println("Object upload started");
         try {
             upload.waitForCompletion();
