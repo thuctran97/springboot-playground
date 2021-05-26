@@ -70,7 +70,7 @@ public class FileUploadController {
                 FileItemStream item = iterStream.next();
                 InputStream stream = item.openStream();
                 if (!item.isFormField()) {
-                    fileService.upload(stream, "temp", new ObjectMetadata());
+                    fileService.uploadViaInputstream(stream, "temp", new ObjectMetadata());
                     stream.close();
                 } else {
                     String formFieldValue = Streams.asString(stream);
