@@ -45,7 +45,7 @@ public class FileUploadController {
     @Autowired
     FileService fileService;
 
-    public final int MAX_MERMORY_sIZE = 1024 * 1024 * 3;
+    public final int MAX_MERMORY_sIZE = 1024 * 1024 * 300;
     public final int MAX_FILE_sIZE = 1024 * 1024 * 2000;
     public final int MAX_REQUEST_SIZE = 1024 * 1024 * 2100;
 
@@ -61,7 +61,7 @@ public class FileUploadController {
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
-        ServletFileUpload upload = new ServletFileUpload();
+        ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory());
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
             int fileCount = 0;
@@ -70,7 +70,7 @@ public class FileUploadController {
                 FileItemStream item = iterStream.next();
                 InputStream stream = item.openStream();
                 if (!item.isFormField()) {
-                    fileService.uploadViaInputstream(stream, "temp", new ObjectMetadata());
+                    fileService.uploadViaFile(stream, "temp"+ fileCount, new ObjectMetadata());
                     stream.close();
                 } else {
                     String formFieldValue = Streams.asString(stream);
@@ -105,16 +105,14 @@ public class FileUploadController {
         };
         upload.setProgressListener(progressListener);
         List items = upload.parseRequest(request);
+        System.out.println("list items: "+ items.size());
         Iterator iter = items.iterator();
         while (iter.hasNext()) {
             FileItem item = (FileItem) iter.next();
+            InputStream stream = item.getInputStream();
             if (!item.isFormField()) {
-                try (
-                    InputStream uploadedStream = item.getInputStream();
-                    OutputStream out = new FileOutputStream("file.mov");
-                    ){
-                    IOUtils.copy(uploadedStream, out);
-                }
+                fileService.uploadViaFile(stream, "temp", new ObjectMetadata());
+                stream.close();
             }
         }
         return "success!";
