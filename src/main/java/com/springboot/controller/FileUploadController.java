@@ -5,6 +5,7 @@
  */
 package com.springboot.controller;
 
+import com.amazonaws.SDKGlobalConfiguration;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.springboot.service.FileService;
 
@@ -29,12 +30,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -60,21 +63,19 @@ public class FileUploadController {
     }
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String handleUpload(HttpServletRequest request) {
-        ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory());
+    public String handleUploadStream(HttpServletRequest request) {
+        ServletFileUpload upload = new ServletFileUpload();
+        Date date = new Date();
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
             int fileCount = 0;
             while (iterStream.hasNext()) {
                 System.out.println("File number: " + fileCount++);
                 FileItemStream item = iterStream.next();
-                InputStream stream = item.openStream();
+                InputStream inputStream = item.openStream();
                 if (!item.isFormField()) {
-                    fileService.uploadViaFile(stream, "temp"+ fileCount, new ObjectMetadata());
-                    stream.close();
-                } else {
-                    String formFieldValue = Streams.asString(stream);
-                    System.out.println("formFieldValue: "+formFieldValue);
+                    fileService.uploadViaFile(inputStream, "stream"+ date.getTime(), new ObjectMetadata());
+                    inputStream.close();
                 }
             }
         } catch (Exception e) {
@@ -94,16 +95,16 @@ public class FileUploadController {
         ServletFileUpload upload = new ServletFileUpload(factory);
         upload.setFileSizeMax(MAX_FILE_sIZE);
         upload.setSizeMax(MAX_REQUEST_SIZE);
-        ProgressListener progressListener = (pBytesRead, pContentLength, pItems) -> {
-            System.out.println("We are currently reading item " + pItems);
-            if (pContentLength == -1) {
-                System.out.println("So far, " + pBytesRead + " bytes have been read.");
-            } else {
-                System.out.println("So far, " + pBytesRead + " of " + pContentLength
-                        + " bytes have been read.");
-            }
-        };
-        upload.setProgressListener(progressListener);
+//        ProgressListener progressListener = (pBytesRead, pContentLength, pItems) -> {
+//            System.out.println("We are currently reading item " + pItems);
+//            if (pContentLength == -1) {
+//                System.out.println("So far, " + pBytesRead + " bytes have been read.");
+//            } else {
+//                System.out.println("So far, " + pBytesRead + " of " + pContentLength
+//                        + " bytes have been read.");
+//            }
+//        };
+//        upload.setProgressListener(progressListener);
         List items = upload.parseRequest(request);
         System.out.println("list items: "+ items.size());
         Iterator iter = items.iterator();
@@ -111,7 +112,7 @@ public class FileUploadController {
             FileItem item = (FileItem) iter.next();
             InputStream stream = item.getInputStream();
             if (!item.isFormField()) {
-                fileService.uploadViaFile(stream, "temp", new ObjectMetadata());
+//                fileService.uploadViaFile(stream, "temp", new ObjectMetadata());
                 stream.close();
             }
         }
