@@ -75,15 +75,17 @@ public class FileService {
     }
 
     public void uploadViaInputstream(InputStream inputStream, String fileName, ObjectMetadata metadata) throws IOException {
-//        metadata.setContentLength(inputStream.available());
+//        System.out.println("available stream bytes now:" + inputStream.available());
         PutObjectRequest request = new PutObjectRequest(
                 existingBucketName, fileName, inputStream, metadata);
-//        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
-//                progressEvent.getBytesTransferred()));
+        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
+                progressEvent.getBytesTransferred()));
         Upload upload = transferManager.upload(request);
         System.out.println("Object upload started");
         try {
             upload.waitForCompletion();
+            transferManager.shutdownNow();
+            inputStream.close();
             System.out.println("Object upload complete");
         } catch (AmazonClientException | InterruptedException amazonClientException) {
             System.out.println("Unable to upload file, upload aborted.");
@@ -92,21 +94,22 @@ public class FileService {
     }
 
     public void uploadViaFile(InputStream inputStream, String fileName, ObjectMetadata metadata) throws IOException {
+        System.out.println("available stream bytes now:" + inputStream.available());
         try (
-                OutputStream out = new FileOutputStream(fileName);
+            OutputStream out = new FileOutputStream(fileName);
         ) {
-            System.out.println("available stream bytes now:" + inputStream.available());
             IOUtils.copy(inputStream, out);
         }
-//        metadata.setContentLength(inputStream.available());
         PutObjectRequest request = new PutObjectRequest(
                 existingBucketName, fileName, new File(fileName));
-//        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
-//                progressEvent.getBytesTransferred()));
+        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
+                progressEvent.getBytesTransferred()));
         Upload upload = transferManager.upload(request);
         System.out.println("Object upload started");
         try {
             upload.waitForCompletion();
+            transferManager.shutdownNow();
+            inputStream.close();
             System.out.println("Object upload complete");
         } catch (AmazonClientException | InterruptedException amazonClientException) {
             System.out.println("Unable to upload file, upload aborted.");

@@ -63,19 +63,27 @@ public class FileUploadController {
     }
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String handleUploadStream(HttpServletRequest request) {
+    public String handleUpload(HttpServletRequest request) {
+//        Long bodyLength = request.getContentLengthLong();
+//        System.out.println("body length: " + bodyLength);
+        ObjectMetadata metadata = new ObjectMetadata();
+        try {
+            String fileSize = request.getHeader("FileSize");
+            System.out.println("file size : " + fileSize);
+            metadata.setContentLength(new Long(fileSize));
+        } catch (Exception e) {
+            System.out.println("File size is not provided");
+        }
+
         ServletFileUpload upload = new ServletFileUpload();
         Date date = new Date();
         try {
             FileItemIterator iterStream =  upload.getItemIterator(request);
-            int fileCount = 0;
             while (iterStream.hasNext()) {
-                System.out.println("File number: " + fileCount++);
                 FileItemStream item = iterStream.next();
                 InputStream inputStream = item.openStream();
                 if (!item.isFormField()) {
-                    fileService.uploadViaFile(inputStream, "stream"+ date.getTime(), new ObjectMetadata());
-                    inputStream.close();
+                    fileService.uploadViaFile(inputStream, "file"+ date.getTime(), metadata);
                 }
             }
         } catch (Exception e) {
