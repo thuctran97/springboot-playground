@@ -48,20 +48,6 @@ public class FileUploadController {
     @Autowired
     FileService fileService;
 
-    public final int MAX_MERMORY_sIZE = 1024 * 1024 * 300;
-    public final int MAX_FILE_sIZE = 1024 * 1024 * 2000;
-    public final int MAX_REQUEST_SIZE = 1024 * 1024 * 2100;
-
-    @RequestMapping(value = "/normal-upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Object> uploadFileTest(@RequestParam("file") MultipartFile file) throws IOException {
-        File convertFile = new File("C:\\Users\\ttran\\Downloads\\temp\\" + file.getOriginalFilename());
-        convertFile.createNewFile();
-        FileOutputStream fout = new FileOutputStream(convertFile);
-        fout.write(file.getBytes());
-        fout.close();
-        return new ResponseEntity<>("File uploaded successfully", HttpStatus.OK);
-    }
-
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) {
 //        Long bodyLength = request.getContentLengthLong();
@@ -90,41 +76,6 @@ public class FileUploadController {
             e.printStackTrace();
         }
         return "success";
-    }
-
-    @RequestMapping(value = "/upload-temp", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String handleUploadTemp(HttpServletRequest request) throws FileUploadException, IOException {
-        System.out.println("isMultipart: "+ ServletFileUpload.isMultipartContent(request));
-        DiskFileItemFactory factory = new DiskFileItemFactory();
-        factory.setRepository(
-                new File(System.getProperty("java.io.tmpdir")));
-        factory.setSizeThreshold(MAX_MERMORY_sIZE);
-        factory.setFileCleaningTracker(null);
-        ServletFileUpload upload = new ServletFileUpload(factory);
-        upload.setFileSizeMax(MAX_FILE_sIZE);
-        upload.setSizeMax(MAX_REQUEST_SIZE);
-//        ProgressListener progressListener = (pBytesRead, pContentLength, pItems) -> {
-//            System.out.println("We are currently reading item " + pItems);
-//            if (pContentLength == -1) {
-//                System.out.println("So far, " + pBytesRead + " bytes have been read.");
-//            } else {
-//                System.out.println("So far, " + pBytesRead + " of " + pContentLength
-//                        + " bytes have been read.");
-//            }
-//        };
-//        upload.setProgressListener(progressListener);
-        List items = upload.parseRequest(request);
-        System.out.println("list items: "+ items.size());
-        Iterator iter = items.iterator();
-        while (iter.hasNext()) {
-            FileItem item = (FileItem) iter.next();
-            InputStream stream = item.getInputStream();
-            if (!item.isFormField()) {
-//                fileService.uploadViaFile(stream, "temp", new ObjectMetadata());
-                stream.close();
-            }
-        }
-        return "success!";
     }
 
 }

@@ -54,26 +54,6 @@ public class FileService {
                 .build();
     }
 
-    public void writeContent(InputStream stream) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            System.out.println(line);
-        }
-    }
-
-    public String getFileName(HttpServletRequest request) {
-        MultipartResolver resolver = new CommonsMultipartResolver(request.getSession().getServletContext());
-        MultipartHttpServletRequest multipartRequest = resolver.resolveMultipart(request);
-        CommonsMultipartFile multipartFile = null;
-        Iterator<String> iterator = multipartRequest.getFileNames();
-        while (iterator.hasNext()) {
-            String key = (String) iterator.next();
-            multipartFile = (CommonsMultipartFile) multipartRequest.getFile(key);
-        }
-        return multipartFile.getOriginalFilename();
-    }
-
     public void uploadViaInputstream(InputStream inputStream, String fileName, ObjectMetadata metadata) throws IOException {
 //        System.out.println("available stream bytes now:" + inputStream.available());
         PutObjectRequest request = new PutObjectRequest(
