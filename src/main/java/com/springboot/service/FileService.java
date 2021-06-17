@@ -21,28 +21,17 @@ import com.amazonaws.services.s3.transfer.Upload;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartHttpServletRequest;
-import org.springframework.web.multipart.MultipartResolver;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
-import org.springframework.web.multipart.commons.CommonsMultipartResolver;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.util.Iterator;
-
-import javax.servlet.http.HttpServletRequest;
 
 @Service
 public class FileService {
     public static String existingBucketName = "dv2corp1-ap-scheduler-svc";
     public TransferManager transferManager;
     public AmazonS3 s3Client;
-    public DefaultAWSCredentialsProviderChain credentialProviderChain;
 
     public FileService() {
         s3Client = AmazonS3ClientBuilder.standard()
