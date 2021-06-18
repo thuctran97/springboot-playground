@@ -20,18 +20,17 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-@Path("/files")
+@Path("/upload")
 public class FileUploadController {
     @Autowired
     FileService fileService;
 
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Path("/upload")
     public String handleUpload(InputStream inputStream) throws IOException {
         Date date = new Date();
         ObjectMetadata metadata = new ObjectMetadata();
-        fileService.uploadViaInputstream(inputStream, "file"+ date.getTime(), metadata);
+        fileService.uploadViaFile(inputStream, "file"+ date.getTime(), metadata);
         return "success";
     }
 
