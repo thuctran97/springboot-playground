@@ -44,6 +44,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -59,23 +61,60 @@ public class FileUploadController {
     @Autowired
     FileService fileService;
 
-    public void validateHash(File inputFile, String fileHash) throws IOException{
+    @Autowired
+    List<String> hashList;
+
+    public void validateHash1(File uploadedFile, String fileHash) throws IOException{
+        System.out.println("Starting to check sha-256 hash - 1");
         String hash256;
-        InputStream inputStream = new FileInputStream(inputFile);
+        InputStream inputStream = new FileInputStream(uploadedFile);
         try (HashingInputStream hashingInputStream = new HashingInputStream(Hashing.sha256(), inputStream)) {
             while (hashingInputStream.read() != -1) {
             }
             hash256 = hashingInputStream.hash().toString();
         }
-        if (!hash256.equals(fileHash)) {
+        if (!hash256.equalsIgnoreCase(fileHash)) {
             throw new IOException("Hash mismatch: " + hash256 + "; expected: " + fileHash);
         }
+        System.out.println("Hash is correct");
+    }
+
+    public void validateHash2(File uploadedFile, String fileHash) throws IOException {
+        System.out.println("Starting to check sha-256 hash - 2");
+        MessageDigest shaDigest = null;
+        InputStream inputStream = new FileInputStream(uploadedFile);
+        try {
+            shaDigest = MessageDigest.getInstance("SHA-256");
+            try (DigestInputStream dis = new DigestInputStream(inputStream, shaDigest)) {
+                while (dis.read() != -1) ;
+                shaDigest = dis.getMessageDigest();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        StringBuilder result = new StringBuilder();
+        for (byte b : shaDigest.digest()) {
+            result.append(String.format("%02x", b));
+        }
+        if (!result.toString().equalsIgnoreCase(fileHash)){
+            throw new IOException("Hash mismatch: " + result + "; expected: " + fileHash);
+        }
+        System.out.println("Hash is correct");
+    }
+    public void validateHash3(File uploadedFile, String fileHash) throws IOException {
+        System.out.println("Starting to check md5 hash - 3");
+        String hash = com.twmacinta.util.MD5.asHex(com.twmacinta.util.MD5.getHash(uploadedFile));
+        if (!hash.equalsIgnoreCase(fileHash)){
+            throw new IOException("Hash mismatch: " + hash + "; expected: " + fileHash);
+        }
+        System.out.println("Hash is correct");
     }
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String handleUpload(HttpServletRequest request) throws IOException {
         ObjectMetadata metadata = new ObjectMetadata();
         ServletFileUpload upload = new ServletFileUpload();
+        String fileHash = request.getHeader(FILE_HASH);
         Date date = new Date();
         File inputFile = null;
         try {
@@ -95,8 +134,7 @@ public class FileUploadController {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        String fileHash = request.getHeader(FILE_HASH);
-        validateHash(inputFile, fileHash);
+        validateHash3(inputFile, fileHash);
         fileService.uploadViaFile(inputFile, "file" + date.getTime());
         return "success";
     }
