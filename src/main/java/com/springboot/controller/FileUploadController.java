@@ -12,6 +12,7 @@ import com.amazonaws.SDKGlobalConfiguration;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.springboot.service.FileService;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
@@ -64,7 +65,7 @@ public class FileUploadController {
     @Autowired
     List<String> hashList;
 
-    public void validateHash1(File uploadedFile, String fileHash) throws IOException{
+    public void validateHashWithHashInputStream(File uploadedFile, String fileHash) throws IOException{
         System.out.println("Starting to check sha-256 hash - 1");
         String hash256;
         InputStream inputStream = new FileInputStream(uploadedFile);
@@ -79,7 +80,9 @@ public class FileUploadController {
         System.out.println("Hash is correct");
     }
 
-    public void validateHash2(File uploadedFile, String fileHash) throws IOException {
+
+
+    public void validateHashWithMessageDigest(File uploadedFile, String fileHash) throws IOException {
         System.out.println("Starting to check sha-256 hash - 2");
         MessageDigest shaDigest = null;
         InputStream inputStream = new FileInputStream(uploadedFile);
@@ -101,7 +104,8 @@ public class FileUploadController {
         }
         System.out.println("Hash is correct");
     }
-    public void validateHash3(File uploadedFile, String fileHash) throws IOException {
+
+    public void validateHasWithMDLib(File uploadedFile, String fileHash) throws IOException {
         System.out.println("Starting to check md5 hash - 3");
         String hash = com.twmacinta.util.MD5.asHex(com.twmacinta.util.MD5.getHash(uploadedFile));
         if (!hash.equalsIgnoreCase(fileHash)){
@@ -117,26 +121,55 @@ public class FileUploadController {
         String fileHash = request.getHeader(FILE_HASH);
         Date date = new Date();
         File inputFile = null;
+
+        MessageDigest shaDigest = null;
         try {
+            shaDigest = MessageDigest.getInstance("SHA-256");
             FileItemIterator iterStream =  upload.getItemIterator(request);
+            String objectKey = "file"+ date.getTime();
+
             while (iterStream.hasNext()) {
                 FileItemStream item = iterStream.next();
                 try (InputStream inputStream = item.openStream()) {
                     if (!item.isFormField()) {
-                        if (null == inputFile) {
+                        DigestInputStream digestInputStream = new DigestInputStream(inputStream, shaDigest);
+                        fileService.uploadViaFile(digestInputStream, objectKey);
+
+                        /*if (null == inputFile) {
                             inputFile = new File(item.getName());
                         }
                         OutputStream out = new FileOutputStream(inputFile);
                         IOUtils.copy(inputStream, out);
+
+                         */
                     }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        validateHash3(inputFile, fileHash);
-        fileService.uploadViaFile(inputFile, "file" + date.getTime());
+
+        if (!validateHash(shaDigest, fileHash))
+            return "Hash mismatch error";
+
         return "success";
+    }
+
+    private boolean validateHash(MessageDigest shaDigest, String fileHash){
+        if (shaDigest == null) {
+            System.out.println("shaDigest can't be initialized");
+            return false;
+        }
+        /*
+        StringBuilder result = new StringBuilder();
+        for (byte b : shaDigest.digest()) {
+            result.append(String.format("%02x", b));
+        }*
+
+         */
+        String calculatedHashString = Hex.encodeHexString(shaDigest.digest());
+        System.out.println("calculatedHashString: " + calculatedHashString + ", fileHash: " + fileHash);
+        return calculatedHashString.equalsIgnoreCase(fileHash);
     }
 
 }

@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.security.DigestInputStream;
 import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
@@ -44,7 +45,6 @@ public class FileService {
     public AmazonS3 s3Client;
     public DefaultAWSCredentialsProviderChain credentialProviderChain;
 
-
     public FileService() {
         s3Client = AmazonS3ClientBuilder.standard()
                 .withRegion(Regions.DEFAULT_REGION)
@@ -55,22 +55,27 @@ public class FileService {
                 .build();
     }
 
-    private Upload initUploadProcess(File uploadedFile, String key) {
-        PutObjectRequest request = new PutObjectRequest(existingBucketName, key, uploadedFile);
-        request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
-                progressEvent.getBytesTransferred()));
-        return transferManager.upload(request);
+    private PutObjectRequest initUploadObject(String objectKey) {
+        PutObjectRequest request = new PutObjectRequest(existingBucketName, objectKey, new File(objectKey));
+        //request.setGeneralProgressListener(progressEvent -> System.out.println("Transferred bytes: " +
+        //        progressEvent.getBytesTransferred()));
+        return request;
     }
 
-    public void uploadViaFile(File uploadedFile, String key) throws IOException {
-        Upload upload = initUploadProcess(uploadedFile, key);
-        System.out.println("Object upload started");
-        try {
+    public void uploadViaFile(DigestInputStream inputStream, String objectKey) throws IOException {
+
+        //System.out.println("Object upload started");
+        try (OutputStream out = new FileOutputStream(objectKey)){
+            int copiedBytes = IOUtils.copy(inputStream, out);
+            System.out.println("Object upload started with number of MB: " + Math.round(copiedBytes / 1024 / 1024));
+            PutObjectRequest request = initUploadObject(objectKey);
+            Upload upload = transferManager.upload(request);
             upload.waitForCompletion();
-            transferManager.shutdownNow();
-            uploadedFile.delete();
+            transferManager.shutdownNow(false);
+
             System.out.println("Object upload complete");
-        } catch (AmazonClientException | InterruptedException amazonClientException) {
+        }
+        catch (AmazonClientException | InterruptedException amazonClientException) {
             System.out.println("Unable to upload file, upload aborted.");
             amazonClientException.printStackTrace();
         }
