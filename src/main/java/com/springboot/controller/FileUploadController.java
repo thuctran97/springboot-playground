@@ -5,52 +5,24 @@
  */
 package com.springboot.controller;
 
-import com.google.common.hash.Hashing;
-import com.google.common.hash.HashingInputStream;
-
-import com.amazonaws.SDKGlobalConfiguration;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.springboot.service.FileService;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
-import org.apache.commons.fileupload.FileUploadException;
-import org.apache.commons.fileupload.ProgressListener;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.fileupload.util.Streams;
-import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -86,14 +58,6 @@ public class FileUploadController {
                     if (!item.isFormField()) {
                         DigestInputStream digestInputStream = new DigestInputStream(inputStream, shaDigest);
                         fileService.uploadViaFile(digestInputStream, objectKey);
-
-                        /*if (null == inputFile) {
-                            inputFile = new File(item.getName());
-                        }
-                        OutputStream out = new FileOutputStream(inputFile);
-                        IOUtils.copy(inputStream, out);
-
-                         */
                     }
                 }
             }
@@ -112,13 +76,6 @@ public class FileUploadController {
             System.out.println("shaDigest can't be initialized");
             return false;
         }
-        /*
-        StringBuilder result = new StringBuilder();
-        for (byte b : shaDigest.digest()) {
-            result.append(String.format("%02x", b));
-        }*
-
-         */
         String calculatedHashString = Hex.encodeHexString(shaDigest.digest());
         System.out.println("calculatedHashString: " + calculatedHashString + ", fileHash: " + fileHash);
         return calculatedHashString.equalsIgnoreCase(fileHash);
