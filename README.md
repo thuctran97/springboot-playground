@@ -1,2 +1,2 @@
-# springboot-test
+# springboot-playground
 Toying with SpringBoot
